@@ -95,8 +95,10 @@ impl VaultMode {
             VaultMode::ShowKey { quantum: _ } => true,
             VaultMode::TokenTour => false,
             VaultMode::Tour => false,
-            // the pump doubles as the game's tick source, so it has to keep running
-            VaultMode::Game => false,
+            // The pump is the game's only tick source: nothing else calls tick(), so
+            // with this false the clock only moves when a key happens to force a
+            // redraw. It is not really about animation here.
+            VaultMode::Game => true,
         }
     }
 }
@@ -986,6 +988,10 @@ fn main() -> ! {
             Some(VaultOp::GameMode) => {
                 *mode.lock().unwrap() = VaultMode::Game;
                 vault_ui.game_start();
+                // The neighbouring modes leave this to the MenuDone that follows, but
+                // the game is the one mode that is broken rather than merely static if
+                // the pump does not run, so don't depend on the ordering.
+                animate.store(VaultMode::Game.should_animate(), Ordering::SeqCst);
                 vault_ui.redraw();
             }
             Some(VaultOp::About) => {
