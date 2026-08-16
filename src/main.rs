@@ -1,3 +1,6 @@
+#[cfg(target_os = "xous")]
+mod swapfix;
+
 mod ux;
 use aes::{Aes256, cipher::BlockSizeUser};
 use aes_gcm_siv::aead::{Aead, Payload};
