@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 
+#[cfg(feature = "board-baosec")]
 use bao1x_hal_service::Adc;
 use blitstr2::GlyphStyle;
 use chrono::Datelike;
@@ -38,6 +39,10 @@ const LOWBATT_THRESH_MV: u32 = 3200;
 const LOWBATT_TIMEOUT_S: u64 = 90;
 #[cfg(feature = "uber")]
 const LOWBATT_TIMEOUT_S: u64 = 180;
+// hosted mode has no ADC; report a comfortably-charged cell so the low battery
+// warning and the forced sleep that follows it never fire in the emulator
+#[cfg(feature = "hosted-baosec")]
+const HOSTED_VBAT_MV: u32 = 4000;
 
 pub const DEFAULT_FONT: GlyphStyle = GlyphStyle::Regular;
 pub const FONT_LIST: [&'static str; 6] = ["regular", "tall", "mono", "bold", "large", "small"];
@@ -528,6 +533,7 @@ pub struct VaultUi {
     pub qr_override: Option<QrCode>,
 
     // adc for reading battery level
+    #[cfg(feature = "board-baosec")]
     adc: Adc,
     batt_polled: bool,
     low_batt_since: Option<Instant>,
@@ -593,6 +599,7 @@ impl VaultUi {
             token_help_state: TokenHelpState::TokenRecap { seen_press: false },
             global_config: None,
             qr_override: None,
+            #[cfg(feature = "board-baosec")]
             adc: Adc::new(),
             batt_polled: false,
             low_batt_since: None,
@@ -603,6 +610,18 @@ impl VaultUi {
             bio_loaded: false,
         }
     }
+
+    /// Battery voltage in mV. The cell sits behind a 0.318 divider into ADC3.
+    #[cfg(feature = "board-baosec")]
+    fn vbat_mv(&self) -> u32 {
+        let voltage_code =
+            self.adc.read_raw(bao1x_hal::udma::AdcSource::Ext(bao1x_hal::udma::AdcExtChannel::Adc3), Some(8));
+        ((bao1x_hal::udma::Adc::raw_to_voltage(voltage_code) * 1000.0f32) / 0.318f32) as u32
+    }
+
+    /// There is no ADC in hosted mode, so hand back a fixed "charged" reading.
+    #[cfg(feature = "hosted-baosec")]
+    fn vbat_mv(&self) -> u32 { HOSTED_VBAT_MV }
 
     pub fn reset_help_state(&mut self) { self.help_state = HelpState::BadgeRecap { seen_press: false }; }
 
@@ -824,12 +843,7 @@ impl VaultUi {
                     && (now / 1000) % 4 == 0
                     && !self.global_config.as_ref().unwrap().lock().unwrap().is_plugged_in()
                 {
-                    let voltage_code = self.adc.read_raw(
-                        bao1x_hal::udma::AdcSource::Ext(bao1x_hal::udma::AdcExtChannel::Adc3),
-                        Some(8),
-                    );
-                    let vbat_mv =
-                        ((bao1x_hal::udma::Adc::raw_to_voltage(voltage_code) * 1000.0f32) / 0.318f32) as u32;
+                    let vbat_mv = self.vbat_mv();
                     if vbat_mv < LOWBATT_THRESH_MV {
                         self.gfx.bitmap(&bitmaps::lowbatt::BITMAP, None, None).ok();
                         let mut msg = TextView::new(
@@ -1359,12 +1373,7 @@ impl VaultUi {
                         Gid::dummy(),
                         TextBounds::CenteredTop(Rectangle::new(Point::new(0, 0), Point::new(128, 128))),
                     );
-                    let voltage_code = self.adc.read_raw(
-                        bao1x_hal::udma::AdcSource::Ext(bao1x_hal::udma::AdcExtChannel::Adc3),
-                        Some(8),
-                    );
-                    let vbat_mv =
-                        ((bao1x_hal::udma::Adc::raw_to_voltage(voltage_code) * 1000.0f32) / 0.318f32) as u32;
+                    let vbat_mv = self.vbat_mv();
                     writeln!(msg, "~Meditations~").ok();
                     // batt level
                     writeln!(msg, "Batt: {} mV", vbat_mv).ok();

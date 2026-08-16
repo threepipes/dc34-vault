@@ -250,6 +250,11 @@ fn main() -> ! {
     // gfx.flush().ok(); // i don't think this is necessary
     gfx.dry_run(false).ok();
 
+    // hosted mode has no swap, so there is nothing to encrypt. Skipping the whole block also
+    // avoids parking forever on a progress message that is never going to be sent.
+    #[cfg(feature = "hosted-baosec")]
+    log::info!("hosted mode: no swap, skipping the swap encryption check");
+    #[cfg(feature = "board-baosec")]
     {
         // check/trigger swap encryption before starting the main loop
         let xns = xous_names::XousNames::new().unwrap();
