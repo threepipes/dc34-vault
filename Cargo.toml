@@ -25,7 +25,7 @@ dc34-api = { path = "../dc34-api" }
 
 # The game that VaultMode::Game hands the screen to. Aliased so that swapping in
 # a different game is a change to this line and nothing else.
-badge-game = { package = "dc34-tamago", path = "../dc34-tamago" }
+badge-game = { package = "dc34-virtual-pet", path = "../dc34-virtual-pet" }
 
 # opensk
 persistent_store = { git = "https://github.com/betrusted-io/xous-core", rev = "616bf65f6e379165464f50b1e79ec42aff77a683" }

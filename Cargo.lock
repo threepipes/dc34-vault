@@ -651,19 +651,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dc34-tamago"
-version = "0.1.0"
-dependencies = [
- "blitstr2",
- "dc34-tamago-core",
- "ux-api",
-]
-
-[[package]]
-name = "dc34-tamago-core"
-version = "0.1.0"
-
-[[package]]
 name = "dc34-vault"
 version = "0.1.0"
 dependencies = [
@@ -684,7 +671,7 @@ dependencies = [
  "chrono",
  "ctap-crypto-vault2",
  "dc34-api",
- "dc34-tamago",
+ "dc34-virtual-pet",
  "digest 0.9.0",
  "ed25519-compact",
  "enum-iterator",
@@ -720,6 +707,19 @@ dependencies = [
  "xous-ipc",
  "xous-usb-hid",
 ]
+
+[[package]]
+name = "dc34-virtual-pet"
+version = "0.1.0"
+dependencies = [
+ "blitstr2",
+ "dc34-virtual-pet-core",
+ "ux-api",
+]
+
+[[package]]
+name = "dc34-virtual-pet-core"
+version = "0.1.0"
 
 [[package]]
 name = "der"
