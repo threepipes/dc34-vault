@@ -399,22 +399,11 @@ fn main() -> ! {
                         menu_mgr.key_press(k);
                     }
                 } else if matches!(mode_now, VaultMode::Game) {
-                    // left selects, center acts, right hands the badge back
-                    match k {
-                        '\u{2190}' => vault_ui.game_cursor = (vault_ui.game_cursor + 1) % 2,
-                        '\u{1f525}' => {
-                            if vault_ui.game_cursor == 1 {
-                                *mode.lock().unwrap() = VaultMode::Idle;
-                                animate.store(VaultMode::Idle.should_animate(), Ordering::SeqCst);
-                            } else {
-                                vault_ui.game_msg_until = tt.elapsed_ms() + 2000;
-                            }
-                        }
-                        '\u{2192}' => {
-                            *mode.lock().unwrap() = VaultMode::Idle;
-                            animate.store(VaultMode::Idle.should_animate(), Ordering::SeqCst);
-                        }
-                        _ => {}
+                    // The game decides what a key means; all we decide is whether it
+                    // is still holding the screen.
+                    if matches!(vault_ui.game_key(k), badge_game::GameAction::Exit) {
+                        *mode.lock().unwrap() = VaultMode::Idle;
+                        animate.store(VaultMode::Idle.should_animate(), Ordering::SeqCst);
                     }
                     vault_ui.redraw();
                 } else {
@@ -996,6 +985,7 @@ fn main() -> ! {
             }
             Some(VaultOp::GameMode) => {
                 *mode.lock().unwrap() = VaultMode::Game;
+                vault_ui.game_start();
                 vault_ui.redraw();
             }
             Some(VaultOp::About) => {
