@@ -405,9 +405,16 @@ fn main() -> ! {
                     // is still holding the screen.
                     if matches!(vault_ui.game_key(k), badge_game::GameAction::Exit) {
                         *mode.lock().unwrap() = VaultMode::Idle;
-                        animate.store(VaultMode::Idle.should_animate(), Ordering::SeqCst);
+                        animate.store(false, Ordering::SeqCst);
+                        // Open the menu rather than dropping to the idle screen.
+                        // The game only exits on the jog press, which is the same
+                        // key that opens the menu everywhere else -- landing on
+                        // idle would make the player press it twice.
+                        idle_menu_mgr.redraw();
+                        menu_active = true;
+                    } else {
+                        vault_ui.redraw();
                     }
-                    vault_ui.redraw();
                 } else {
                     // let the UI get first whack at filtering keys - the '∴' key may be intercepted
                     // by various test routines
