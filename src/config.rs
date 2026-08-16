@@ -274,6 +274,8 @@ impl GlobalConfig {
                 VaultMode::ShowKey { quantum: _ } => (true, LONG_TIMEOUT),
                 VaultMode::TokenTour => (true, MEDIUM_TIMEOUT),
                 VaultMode::Tour => (true, MEDIUM_TIMEOUT),
+                // the game can sit idle between moves, so give it the longest leash
+                VaultMode::Game => (true, LONG_TIMEOUT),
             };
             self.power_manager_config(enable, Some(duration_sec));
         }

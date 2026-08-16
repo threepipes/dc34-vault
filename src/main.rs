@@ -73,6 +73,8 @@ pub enum VaultMode {
     Totp,
     Password,
     TokenHelp,
+    /// The screen belongs to the `badge_game` crate for as long as we're in here.
+    Game,
 }
 
 impl VaultMode {
@@ -93,6 +95,8 @@ impl VaultMode {
             VaultMode::ShowKey { quantum: _ } => true,
             VaultMode::TokenTour => false,
             VaultMode::Tour => false,
+            // the pump doubles as the game's tick source, so it has to keep running
+            VaultMode::Game => false,
         }
     }
 }
@@ -394,6 +398,25 @@ fn main() -> ! {
                     } else {
                         menu_mgr.key_press(k);
                     }
+                } else if matches!(mode_now, VaultMode::Game) {
+                    // left selects, center acts, right hands the badge back
+                    match k {
+                        '\u{2190}' => vault_ui.game_cursor = (vault_ui.game_cursor + 1) % 2,
+                        '\u{1f525}' => {
+                            if vault_ui.game_cursor == 1 {
+                                *mode.lock().unwrap() = VaultMode::Idle;
+                                animate.store(VaultMode::Idle.should_animate(), Ordering::SeqCst);
+                            } else {
+                                vault_ui.game_msg_until = tt.elapsed_ms() + 2000;
+                            }
+                        }
+                        '\u{2192}' => {
+                            *mode.lock().unwrap() = VaultMode::Idle;
+                            animate.store(VaultMode::Idle.should_animate(), Ordering::SeqCst);
+                        }
+                        _ => {}
+                    }
+                    vault_ui.redraw();
                 } else {
                     // let the UI get first whack at filtering keys - the '∴' key may be intercepted
                     // by various test routines
@@ -969,6 +992,10 @@ fn main() -> ! {
             }
             Some(VaultOp::BadgeMode) => {
                 *mode.lock().unwrap() = VaultMode::Idle;
+                vault_ui.redraw();
+            }
+            Some(VaultOp::GameMode) => {
+                *mode.lock().unwrap() = VaultMode::Game;
                 vault_ui.redraw();
             }
             Some(VaultOp::About) => {

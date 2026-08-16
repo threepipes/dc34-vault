@@ -542,6 +542,10 @@ pub struct VaultUi {
     phase: bool,
     edge: bool,
     last_mode: VaultMode,
+    /// Menu cursor while in `VaultMode::Game`.
+    pub(crate) game_cursor: usize,
+    /// Deadline for the transient message shown in `VaultMode::Game`.
+    pub(crate) game_msg_until: u64,
     pub bio_loaded: bool,
 }
 
@@ -607,6 +611,8 @@ impl VaultUi {
             phase: false,
             edge: false,
             last_mode: VaultMode::FactoryTest,
+            game_cursor: 0,
+            game_msg_until: 0,
             bio_loaded: false,
         }
     }
@@ -1447,6 +1453,66 @@ impl VaultUi {
                         }
                         _ => {}
                     }
+                }
+            }
+            VaultMode::Game => {
+                // Placeholder screen. It stands in for the game crate until that exists,
+                // and exercises the three things the game will need from this side:
+                // drawing, key handling, and a clock that ticks off the animation pump.
+                self.clear_area();
+                {
+                    // Game time runs off the ticktimer for now, which resets on every
+                    // boot. Cumulative uptime across power cycles comes later, with the
+                    // RTC. TIME_SCALE is what makes a day's worth of progress visible in
+                    // a minute of testing.
+                    const REAL_MS_PER_GAME_DAY: u64 = 2 * 60 * 60 * 1000;
+                    const TIME_SCALE: u64 = 60;
+                    let scaled = self.tt.elapsed_ms().saturating_mul(TIME_SCALE);
+                    let day = scaled / REAL_MS_PER_GAME_DAY + 1;
+                    let minutes = (scaled % REAL_MS_PER_GAME_DAY) * 24 * 60 / REAL_MS_PER_GAME_DAY;
+                    let mut clock = TextView::new(
+                        Gid::dummy(),
+                        TextBounds::BoundingBox(Rectangle::new_coords(0, 2, 127, 20)),
+                    );
+                    clock.draw_border = false;
+                    clock.style = GlyphStyle::Bold;
+                    write!(clock, "Day {}  {:02}:{:02}", day, minutes / 60, minutes % 60).ok();
+                    self.gfx.draw_textview(&mut clock).ok();
+                }
+                for (i, label) in ["hello, world!", "end"].iter().enumerate() {
+                    let selected = self.game_cursor == i;
+                    let top = 34 + (i as isize) * 32;
+                    let border = Rectangle::new_coords_with_style(
+                        8,
+                        top,
+                        119,
+                        top + 26,
+                        DrawStyle::new(PixelColor::Light, PixelColor::Dark, if selected { 2 } else { 1 }),
+                    );
+                    self.gfx.draw_rounded_rectangle(RoundedRectangle::new(border, 4)).ok();
+                    let mut tv = TextView::new(
+                        Gid::dummy(),
+                        TextBounds::BoundingBox(Rectangle::new_coords(13, top + 4, 114, top + 23)),
+                    );
+                    tv.draw_border = false;
+                    tv.style = GlyphStyle::Regular;
+                    write!(tv, "{}{}", if selected { "> " } else { "  " }, label).ok();
+                    self.gfx.draw_textview(&mut tv).ok();
+                }
+                {
+                    let mut footer = TextView::new(
+                        Gid::dummy(),
+                        TextBounds::BoundingBox(Rectangle::new_coords(0, 110, 127, 127)),
+                    );
+                    footer.draw_border = false;
+                    if self.tt.elapsed_ms() < self.game_msg_until {
+                        footer.style = GlyphStyle::Bold;
+                        write!(footer, "Hello, world!").ok();
+                    } else {
+                        footer.style = GlyphStyle::Small;
+                        write!(footer, "< sel   ^ ok   > cancel").ok();
+                    }
+                    self.gfx.draw_textview(&mut footer).ok();
                 }
             } // _ => unimplemented!(),
         }
